@@ -24,6 +24,23 @@ namespace boost {
 	  return edmonds_karp_max_flow(g, src, sink, cap, res, rev, color, pred);
   }
 
+  template <class Graph, 
+            class CapacityEdgeMap, class ResidualCapacityEdgeMap,
+            class ReverseEdgeMap, class VertexIndexMap>
+  typename property_traits<CapacityEdgeMap>::value_type
+  bipartite_matching_push_relabel
+    (Graph& g, 
+     typename graph_traits<Graph>::vertex_descriptor src,
+     typename graph_traits<Graph>::vertex_descriptor sink,
+     CapacityEdgeMap cap, 
+     ResidualCapacityEdgeMap res,
+     ReverseEdgeMap rev, 
+     VertexIndexMap indexMap) 
+  {
+	  return push_relabel_max_flow(g, src, sink, cap, res, rev, indexMap);
+  }
+
+
 } //namespace boost
 
 #endif //BIPARTITE_MATCHING_HPP

@@ -49,11 +49,12 @@ int main()
 
   std::vector<default_color_type> color(num_vertices(g));
   std::vector<Traits::edge_descriptor> pred(num_vertices(g));
-  long flow = bipartite_matching_edmonds_karp
-  	(g, s, t, capacity, residual_capacity, rev, &color[0], &pred[0]);
-
-/*  long flow = bipartite_matching_push_relabel
+/*  long flow = bipartite_matching_edmonds_karp
   	(g, s, t, capacity, residual_capacity, rev, &color[0], &pred[0]);*/
+
+  property_map<Graph, vertex_index_t>::type indexMap = get(vertex_index, g);
+  long flow = bipartite_matching_push_relabel
+  	(g, s, t, capacity, residual_capacity, rev, indexMap);
   
   std::cout << "Matching Number:" << std::endl;
   std::cout << flow << std::endl << std::endl;
