@@ -7,48 +7,68 @@
 #include <boost/property_map/property_map.hpp>
 #include "bipartite_matching.hpp"
 #include <boost/graph/filtered_graph.hpp>
-#include <boost/graph/one_bit_color_map.hpp>
 #include <boost/graph/bipartite.hpp>
 
 using namespace boost;
 
-template<typename Graph, typename PartitionMap>
+template<typename Graph, typename PartitionMap, typename CapacityMap, typename Vertex>
 struct make_directed
 {
 	make_directed() {}
 
-	make_directed(Graph& _g, PartitionMap& _partition_map):g(_g), partition_map(_partition_map) {}
+	make_directed(Graph _g, PartitionMap _partition_map, CapacityMap _capacity_map, Vertex _src, Vertex _sink):
+						g(_g), partition_map(_partition_map), capacity_map(_capacity_map), src(_src), sink(_sink) {}
 
 	template<typename EdgeDescriptor>
 	bool operator()(const EdgeDescriptor& edge) const {
-		if(get(partition_map, source(edge, g)) == color_traits<default_color_type>::white())
+
+		if(source(edge,g) == src && get(capacity_map, edge) == 1) //src
 			return true;
+
+		if(source(edge,g) == sink && get(capacity_map, edge) == 0) //sink
+			return true;
+
+		if(get(partition_map, source(edge, g)) == color_traits<default_color_type>::white()) { //white
+			if(target(edge,g) == src) {
+				if(get(capacity_map, edge) == 0)
+					return true;
+			}
+			else {
+				if(get(capacity_map, edge)==1)
+					return true;
+			}
+		}
+		else { //black
+			if(target(edge,g) == sink) {
+				if(get(capacity_map, edge) == 1)
+					return true;
+			}
+			else {
+				if(get(capacity_map, edge) == 0)
+					return true;
+			}
+		}
 
 		return false;
 	}
 
-	PartitionMap& partition_map;
-	Graph& g;
+	PartitionMap partition_map;
+	CapacityMap capacity_map;
+	Vertex src;
+	Vertex sink;
+	Graph g;
 };
 
 int main()
 {
-#if 1
-  typedef adjacency_list_traits < vecS, vecS, directedS > Traits;
 
-  typedef adjacency_list < listS, vecS, directedS,
-    no_property,
-    property < edge_index_t, size_t > > Graph;
-#else
   typedef adjacency_list_traits < vecS, vecS, undirectedS > Traits;
 
   typedef adjacency_list < listS, vecS, undirectedS,
     no_property,
     property < edge_index_t, size_t > > Graph;
-#endif
 
   typedef graph_traits<Graph>::edge_descriptor edge_descriptor;
-
 
   Graph g;
 
@@ -56,7 +76,11 @@ int main()
   edge_descriptor *pReverse;
 
   Traits::vertex_descriptor s, t;
-  read_dimacs_bipartite(g, &pCapacity, &pReverse, &pResidualCapacity, s, t); //passing residual capacity for allocation
+  typedef property_map<Graph, vertex_index_t>::type IndexMap;
+  typedef std::vector<default_color_type> PartitionMap;
+  PartitionMap *partitionMap; 
+
+  read_dimacs_bipartite(g, &pCapacity, &pReverse, &pResidualCapacity, &partitionMap, s, t); //passing residual capacity for allocation
 
   //create maps out of arrays
   typedef property_map<Graph, edge_index_t>::type EdgeID_Map;
@@ -75,32 +99,25 @@ int main()
 	  rev(pReverse, edge_id);
 
 
-#if 0  //create a filtered graph
-  typedef property_map<Graph, vertex_index_t>::type IndexMap;
-  typedef one_bit_color_map<IndexMap> PartitionMap;
+ //create a filtered graph
+  typedef iterator_property_map<PartitionMap::iterator, IndexMap> IteratorPartitionMap;
+  IndexMap indexMap = get(vertex_index, g);
+  IteratorPartitionMap iteratorPartitionMap(partitionMap->begin(), indexMap);
 
-  IndexMap index_map = get(vertex_index, g);
-  PartitionMap partition_map(num_vertices(g), index_map);
-  is_bipartite(g, index_map, partition_map);
-
-  make_directed<Graph, PartitionMap> md(g, partition_map);
-  filtered_graph<Graph, make_directed> fg(g, md);
+  typedef make_directed<Graph, IteratorPartitionMap/*clown PartitionMap*/, iterator_property_map<unsigned int*, EdgeID_Map>, Traits::vertex_descriptor> make_directed_t;
+    
+  make_directed_t md(g, iteratorPartitionMap/*clown *partition_map*/, capacity, s, t);
+  filtered_graph<Graph, make_directed_t> fg(g, md);
+  std::vector<default_color_type> color(num_vertices(g));
+  std::vector<Traits::edge_descriptor> pred(num_vertices(g));
 
   long flow = bipartite_matching_edmonds_karp
   	(fg, s, t, capacity, residual_capacity, rev, &color[0], &pred[0]);
-#endif
 
-#if 1
-
-  std::vector<default_color_type> color(num_vertices(g));
-  std::vector<Traits::edge_descriptor> pred(num_vertices(g));
-  long flow = bipartite_matching_edmonds_karp
-  	(g, s, t, capacity, residual_capacity, rev, &color[0], &pred[0]);
-
-#else
+#if 0 
 
   long flow = bipartite_matching_push_relabel
-  	(g, s, t, capacity, residual_capacity, rev, index_map);
+  	(fg, s, t, capacity, residual_capacity, rev, index_map);
 
 #endif 
 
@@ -118,6 +135,7 @@ int main()
 
 
   //now clean up
+  delete partitionMap;
   delete[] pCapacity;
   delete[] pResidualCapacity;
   delete[] pReverse;
