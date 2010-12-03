@@ -9,14 +9,16 @@
 #include <cstdlib>
 
 #include <boost/graph/graph_traits.hpp>
+#include <boost/graph/bipartite.hpp>
 
 namespace boost {
 
-template <class Graph>
+template <class Graph, class PartitionMap>
 int read_dimacs_bipartite(Graph& g,
                          unsigned int** ppCapacity,
                          typename graph_traits<Graph>::edge_descriptor** ppReverse,
                          unsigned int** ppResidualCapacity,
+						 PartitionMap** ppPartitionMap,
                          typename graph_traits<Graph>::vertex_descriptor& src,
                          typename graph_traits<Graph>::vertex_descriptor& sink,
                          std::istream& in = std::cin)
@@ -42,7 +44,7 @@ int read_dimacs_bipartite(Graph& g,
   //giving edge ids to real and fake edges and their reverses
   //all reverse edges get original_edge_id + 1
   //so all original edges are even, reverse edges are odd
-  unsigned int realEdgeID, fakeEdgeID; 
+  unsigned int realEdgeID; 
 
   long m, n,                    /*  number of edges and nodes */
     i, head, tail;
@@ -171,8 +173,7 @@ int read_dimacs_bipartite(Graph& g,
 	  pReverse = *ppReverse;
 
 	  //now initialize the edge IDs
-	  realEdgeID = 0; //range 0 ~ 2m-1
-	  fakeEdgeID = 2*m; //range 2m ~ beyond{2(n-2+m)-1}
+	  realEdgeID = 0;
 	}
       break;
 
@@ -213,42 +214,6 @@ int read_dimacs_bipartite(Graph& g,
         pReverse[realEdgeID-2 /*e1*/ ] = e2; 
         pReverse[realEdgeID-1 /*e2*/ ] = e1; 
 
-		// add the fake edge from source to tail and its reverse
-		if(marked[tail] == false)
-		{
-			boost::tie(e1, in1) = add_edge(verts[n-2], verts[tail], fakeEdgeID++, g); 
-			boost::tie(e2, in2) = add_edge(verts[tail], verts[n-2], fakeEdgeID++, g);
-			if (!in1 || !in2) {
-			  std::cerr << "unable to add edge (" << n-2 << "," << tail << ")"
-						<< std::endl;
-			  return -1;
-			}
-			pCapacity[fakeEdgeID-2 /*e1*/ ] = 1;
-			pCapacity[fakeEdgeID-1 /*e2*/ ] = 0;
-			pReverse[fakeEdgeID-2 /*e1*/ ] = e2;
-			pReverse[fakeEdgeID-1 /*e2*/ ] = e1;
-			
-			marked[tail] = true;
-		}
-        
-		// add the fake edge from head to target and its reverses
-		if(marked[head] == false)
-		{
-			boost::tie(e1, in1) = add_edge(verts[head], verts[n-1], fakeEdgeID++, g);
-			boost::tie(e2, in2) = add_edge(verts[n-1], verts[head], fakeEdgeID++, g);
-			if (!in1 || !in2) {
-			  std::cerr << "unable to add edge (" << head << "," << n-1 << ")"
-						<< std::endl;
-			  return -1;
-			}
-			pCapacity[fakeEdgeID-2 /*e1*/ ] = 1;
-			pCapacity[fakeEdgeID-1 /*e2*/ ] = 0;
-			pReverse[fakeEdgeID-2 /*e1*/ ] = e2;
-			pReverse[fakeEdgeID-1 /*e2*/ ] = e1;
-
-			marked[head] = true;
-		}
-
       }
       ++no_alines;
       break;
@@ -268,9 +233,65 @@ int read_dimacs_bipartite(Graph& g,
   if ( no_alines < m ) /* not enough arcs */
     { err_no = EN19; goto error; }
 
+#if 0
   if ( out_degree(src, g) == 0 || out_degree(sink, g) == 0  )
     /* no arc goes out of the source */
     { err_no = EN20; goto error; }
+#endif
+
+	//post-processing
+	{
+		//now check for bipartiteness and colorize
+		typedef typename property_map<Graph, vertex_index_t>::type IndexMap;
+
+		IndexMap index_map = get(vertex_index, g);
+		*ppPartitionMap = new PartitionMap(num_vertices(g)); //its a vector!!!
+		
+		typedef iterator_property_map<typename PartitionMap::iterator, IndexMap> IteratorPartitionMap;
+		IteratorPartitionMap iteratorPartitionMap((*ppPartitionMap)->begin(), index_map);
+
+		bool really = is_bipartite(g, index_map, iteratorPartitionMap);
+		std::cout << (really?"true":"false") << std::endl;
+
+		typename graph_traits<Graph>::vertex_iterator vertex_iter, vertex_end;
+		for(tie (vertex_iter, vertex_end) = vertices (g); vertex_iter != vertex_end; ++vertex_iter)
+    	{   
+			std::cout << "Vertex " << *vertex_iter << " has color " << (get(iteratorPartitionMap, *vertex_iter) == 
+					color_traits<default_color_type>::white() ? "white" : "black") << std::endl;
+		}   
+
+		//now add edges from and to src and target
+		for(tie (vertex_iter, vertex_end) = vertices (g); vertex_iter != vertex_end; ++vertex_iter)
+    	{   
+			if(*vertex_iter == src || *vertex_iter == sink)		continue;
+
+			if(get(iteratorPartitionMap, *vertex_iter) == color_traits<default_color_type>::white())
+			{
+				//add edge from src to node
+				edge_descriptor e1, e2;
+				bool in1, in2;
+				boost::tie(e1, in1) = add_edge(verts[src], verts[*vertex_iter], realEdgeID++, g); 
+				boost::tie(e2, in2) = add_edge(verts[*vertex_iter], verts[src], realEdgeID++, g); 
+				pCapacity[realEdgeID-2 /*e1*/ ] = 1;
+				pCapacity[realEdgeID-1 /*e2*/ ] = 0;
+				pReverse[realEdgeID-2 /*e1*/ ] = e2; 
+				pReverse[realEdgeID-1 /*e2*/ ] = e1; 
+
+			}
+			else
+			{
+				//add edge from node to target
+				edge_descriptor e1, e2;
+				bool in1, in2;
+				boost::tie(e1, in1) = add_edge(verts[*vertex_iter], verts[sink], realEdgeID++, g); 
+				boost::tie(e2, in2) = add_edge(verts[sink], verts[*vertex_iter], realEdgeID++, g); 
+				pCapacity[realEdgeID-2 /*e1*/ ] = 1;
+				pCapacity[realEdgeID-1 /*e2*/ ] = 0;
+				pReverse[realEdgeID-2 /*e1*/ ] = e2; 
+				pReverse[realEdgeID-1 /*e2*/ ] = e1; 
+			}
+		}   
+	}
 
   /* Thanks God! all is done */
   return (0);
