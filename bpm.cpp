@@ -17,53 +17,6 @@
 
 using namespace boost;
 
-template<typename Graph, typename PartitionMap, typename CapacityMap, typename Vertex>
-struct make_directed
-{
-	make_directed() {}
-
-	make_directed(Graph _g, PartitionMap _partition_map, CapacityMap _capacity_map, Vertex _src, Vertex _sink):
-						g(_g), partition_map(_partition_map), capacity_map(_capacity_map), src(_src), sink(_sink) {}
-
-	template<typename EdgeDescriptor>
-	bool operator()(const EdgeDescriptor& edge) const {
-
-		if(source(edge,g) == src && get(capacity_map, edge) == 1) //src
-			return true;
-
-		if(source(edge,g) == sink && get(capacity_map, edge) == 0) //sink
-			return true;
-
-		if(get(partition_map, source(edge, g)) == color_traits<default_color_type>::white()) { //white
-			if(target(edge,g) == src) {
-				if(get(capacity_map, edge) == 0)
-					return true;
-			}
-			else {
-				if(get(capacity_map, edge)==1)
-					return true;
-			}
-		}
-		else { //black
-			if(target(edge,g) == sink) {
-				if(get(capacity_map, edge) == 1)
-					return true;
-			}
-			else {
-				if(get(capacity_map, edge) == 0)
-					return true;
-			}
-		}
-
-		return false;
-	}
-
-	PartitionMap partition_map;
-	CapacityMap capacity_map;
-	Vertex src;
-	Vertex sink;
-	Graph g;
-};
 
 int main()
 {
@@ -73,8 +26,6 @@ int main()
   typedef adjacency_list < listS, vecS, undirectedS,
     no_property,
     property < edge_index_t, size_t > > Graph;
-
-  typedef graph_traits<Graph>::edge_descriptor edge_descriptor;
 
   Graph g;
 
