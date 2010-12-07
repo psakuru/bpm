@@ -29,22 +29,11 @@ int main()
 
   Graph g;
 
-  typedef property_map<Graph, vertex_index_t>::type IndexMap;
-  typedef std::vector<default_color_type> PartitionMap;
-  PartitionMap *partitionMap; 
-
   typedef graph_traits<Graph>::vertices_size_type vertices_size_type;
   typedef graph_traits<Graph>::vertex_descriptor vertex_descriptor;
   typedef graph_traits<Graph>::edge_descriptor edge_descriptor;
 
   std::vector<vertex_descriptor> verts; //stores vertex descriptors for each added node
-
-  vertex_descriptor src, sink;
-
-  //arrays to fill in after memory allocation
-  unsigned int* pCapacity;
-  unsigned int* pResidualCapacity;
-  edge_descriptor* pReverse;
 
   //giving edge ids to real and fake edges and their reverses
   //all reverse edges get original_edge_id + 1
@@ -104,6 +93,17 @@ int main()
   }     /* end of input loop */
 
 	//post-processing
+	typedef property_map<Graph, vertex_index_t>::type IndexMap;
+	typedef std::vector<default_color_type> PartitionMap;
+	PartitionMap *partitionMap; 
+
+	vertex_descriptor src, sink;
+
+	//arrays to fill in after memory allocation
+	unsigned int* pCapacity;
+	unsigned int* pResidualCapacity;
+	edge_descriptor* pReverse;
+
 
 	typedef property_map<Graph, edge_index_t>::type EdgeID_Map;
 	EdgeID_Map edge_id_map = get(edge_index, g);
