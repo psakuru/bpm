@@ -79,7 +79,6 @@ int main()
   Graph g;
 
   typedef property_map<Graph, vertex_index_t>::type IndexMap;
-  typedef property_map<Graph, edge_index_t>::type EdgeMap;
   typedef std::vector<default_color_type> PartitionMap;
   PartitionMap *partitionMap; 
 
@@ -125,25 +124,6 @@ int main()
           verts.push_back(add_vertex(g));
       }
 
-      // add fake source and target 
-	  std::cout << "Received vertex size: " << n << std::endl;
-	  n += 2;
-      verts.push_back(add_vertex(g)); //source at index n-2
-	  verts.push_back(add_vertex(g)); //target at index n-1
-
-	  // initialize src and sink
-	  src = verts[n-2];
-	  sink = verts[n-1];
-
-	  std::cout << "src: " << src << "\t" << "sink: " << sink << std::endl;
-
-	  //create dynamic memory for capacity and reverse
-	  //n-2 fake edges(one for each of the n-2 real nodes) and m bipartite edges
-	  //double that for reverses
-	  pCapacity = new unsigned int[2*(n-2 + m)]; 
-	  pResidualCapacity = new unsigned int[2*(n-2 + m)];
-	  pReverse = new edge_descriptor[2*(n-2 + m)];
-
 	  //now initialize the edge IDs
 	  realEdgeID = 0;
 	}
@@ -161,17 +141,11 @@ int main()
         edge_descriptor e1, e2;
         bool in1, in2;
         boost::tie(e1, in1) = add_edge(verts[tail], verts[head], realEdgeID++, g); 
-        boost::tie(e2, in2) = add_edge(verts[head], verts[tail], realEdgeID++, g); 
-        if (!in1 || !in2) {
+        if (!in1/* || !in2*/) {
           std::cerr << "unable to add edge (" << head << "," << tail << ")"
                     << std::endl;
           return -1;
         }
-        pCapacity[realEdgeID-2 /*e1*/ ] = 1;
-        pCapacity[realEdgeID-1 /*e2*/ ] = 0;
-        pReverse[realEdgeID-2 /*e1*/ ] = e2; 
-        pReverse[realEdgeID-1 /*e2*/ ] = e1; 
-
       }
       break;
 
@@ -179,11 +153,14 @@ int main()
   }     /* end of input loop */
 
 	//post-processing
+
+	typedef property_map<Graph, edge_index_t>::type EdgeID_Map;
+	EdgeID_Map edge_id_map = get(edge_index, g);
+
+	IndexMap index_map = get(vertex_index, g);
+
 	{
 		//now check for bipartiteness and colorize
-		typedef property_map<Graph, vertex_index_t>::type IndexMap;
-
-		IndexMap index_map = get(vertex_index, g);
 		partitionMap = new PartitionMap(num_vertices(g)); //its a vector!!!
 		
 		typedef iterator_property_map<PartitionMap::iterator, IndexMap> IteratorPartitionMap;
@@ -197,7 +174,29 @@ int main()
     	{   
 			std::cout << "Vertex " << *vertex_iter << " has color " << (get(iteratorPartitionMap, *vertex_iter) == 
 					color_traits<default_color_type>::white() ? "white" : "black") << std::endl;
-		}   
+		}
+
+		// add fake source and target 
+		n += 2;
+		verts.push_back(add_vertex(g)); //source at index n-2
+		verts.push_back(add_vertex(g)); //target at index n-1
+
+		// initialize src and sink
+		src = verts[n-2];
+		sink = verts[n-1];
+
+		std::cout << "src: " << src << "\t" << "sink: " << sink << std::endl;
+
+		//create dynamic memory for capacity and reverse
+		//n-2 fake edges(one for each of the n-2 real nodes) and m bipartite edges
+		//double that for reverses
+		pCapacity = new unsigned int[2*(n-2 + m)]; 
+		pResidualCapacity = new unsigned int[2*(n-2 + m)];
+		pReverse = new edge_descriptor[2*(n-2 + m)];
+
+		edge_descriptor e1;
+        bool in1;
+
 
 		//now add edges from and to src and target
 		for(tie (vertex_iter, vertex_end) = vertices (g); vertex_iter != vertex_end; ++vertex_iter)
@@ -206,6 +205,25 @@ int main()
 
 			if(get(iteratorPartitionMap, *vertex_iter) == color_traits<default_color_type>::white())
 			{
+	
+				//add reverse edges to real bipartite edges, assign capacity and reverse edge map values
+				graph_traits < Graph >::out_edge_iterator ei, e_end;
+				graph_traits<Graph>::degree_size_type outDegree = out_degree(*vertex_iter, g);
+				unsigned int i=0;
+				for (boost::tie(ei, e_end) = out_edges(*vertex_iter, g); ei != e_end && i < outDegree; ++ei, ++i) {
+
+					unsigned int edgeID = get(edge_id_map, *ei);
+        			boost::tie(e1, in1) = add_edge(verts[target(*ei, g)], verts[source(*ei, g)], realEdgeID, g); 
+
+					pCapacity[edgeID] = 1;
+					pCapacity[realEdgeID] = 0;
+					pReverse[edgeID] = e1;
+					pReverse[realEdgeID] = *ei;
+
+					++realEdgeID;
+				}
+
+
 				//add edge from src to node
 				edge_descriptor e1, e2;
 				bool in1, in2;
@@ -234,20 +252,17 @@ int main()
 
 
   //create maps out of arrays
-  typedef property_map<Graph, edge_index_t>::type EdgeID_Map;
-  EdgeID_Map edge_id = get(edge_index, g);
+  iterator_property_map
+    <unsigned int*, EdgeID_Map>
+	  capacity(pCapacity, edge_id_map);
 
   iterator_property_map
     <unsigned int*, EdgeID_Map>
-	  capacity(pCapacity, edge_id);
-
-  iterator_property_map
-    <unsigned int*, EdgeID_Map>
-	  residual_capacity(pResidualCapacity, edge_id);
+	  residual_capacity(pResidualCapacity, edge_id_map);
 
   iterator_property_map
     <edge_descriptor*, EdgeID_Map>
-	  rev(pReverse, edge_id);
+	  rev(pReverse, edge_id_map);
 
 
  //create a filtered graph
@@ -255,17 +270,19 @@ int main()
   IndexMap indexMap = get(vertex_index, g);
   IteratorPartitionMap iteratorPartitionMap(partitionMap->begin(), indexMap);
 
-  typedef make_directed<Graph, IteratorPartitionMap/*clown PartitionMap*/, iterator_property_map<unsigned int*, EdgeID_Map>, Traits::vertex_descriptor> make_directed_t;
+  typedef make_directed<Graph, IteratorPartitionMap, iterator_property_map<unsigned int*, EdgeID_Map>, Traits::vertex_descriptor> make_directed_t;
     
-  make_directed_t md(g, iteratorPartitionMap/*clown *partition_map*/, capacity, src, sink);
+  make_directed_t md(g, iteratorPartitionMap, capacity, src, sink);
   filtered_graph<Graph, make_directed_t> fg(g, md);
   std::vector<default_color_type> color(num_vertices(g));
   std::vector<Traits::edge_descriptor> pred(num_vertices(g));
 
+#if 1
+
   long flow = bipartite_matching_edmonds_karp
   	(fg, src, sink, capacity, residual_capacity, rev, &color[0], &pred[0]);
 
-#if 0 
+#else  
 
   long flow = bipartite_matching_push_relabel
   	(fg, src, sink, capacity, residual_capacity, rev, index_map);
