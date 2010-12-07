@@ -34,7 +34,6 @@ int read_dimacs_bipartite(Graph& g,
   typedef typename graph_traits<Graph>::edge_descriptor edge_descriptor;
 
   std::vector<vertex_descriptor> verts; //stores vertex descriptors for each added node
-  std::vector<bool> marked; //used to mark nodes when fake edges are added
 
   //arrays to fill in after memory allocation
   unsigned int* pCapacity;
@@ -149,10 +148,6 @@ int read_dimacs_bipartite(Graph& g,
 	  n += 2;
       verts.push_back(add_vertex(g)); //source at index n-2
 	  verts.push_back(add_vertex(g)); //target at index n-1
-
-	  // initialize the 'marked' bool vector now that you know the size
-	  std::vector<bool> _marked(n, false);
-	  marked = _marked;
 
 	  // initialize src and sink
 	  src = verts[n-2];
