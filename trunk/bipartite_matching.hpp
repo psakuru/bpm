@@ -41,8 +41,7 @@ bipartite_matching_push_relabel
 }
 
 
-
-/*template<typename Graph, typename PartitionMap, typename CapacityMap, typename Vertex>
+template<typename Graph, typename PartitionMap, typename CapacityMap, typename Vertex>
 struct make_directed
 {
 	make_directed() {}
@@ -96,8 +95,8 @@ struct make_directed
   bipartite_matching_edmonds_karp
     (Graph& g)
   {
-	  //
-  }*/
+	  return 0;
+  }
 
 
 } //namespace boost
