@@ -6,39 +6,9 @@
 
 namespace boost {
 
-template <class Graph, 
-		class CapacityEdgeMap, class ResidualCapacityEdgeMap,
-		class ReverseEdgeMap, class ColorMap, class PredEdgeMap>
-typename property_traits<CapacityEdgeMap>::value_type
-bipartite_matching_edmonds_karp
-  (Graph& g, 
-   typename graph_traits<Graph>::vertex_descriptor src,
-   typename graph_traits<Graph>::vertex_descriptor sink,
-   CapacityEdgeMap cap, 
-   ResidualCapacityEdgeMap res,
-   ReverseEdgeMap rev, 
-   ColorMap color, 
-   PredEdgeMap pred)
-{
-	return edmonds_karp_max_flow(g, src, sink, cap, res, rev, color, pred);
-}
+#define DENSITY_THRESHOLD 0.5 //TODO: determine empirically
 
-template <class Graph, 
-		class CapacityEdgeMap, class ResidualCapacityEdgeMap,
-		class ReverseEdgeMap, class VertexIndexMap>
-typename property_traits<CapacityEdgeMap>::value_type
-bipartite_matching_push_relabel
-  (Graph& g, 
-   typename graph_traits<Graph>::vertex_descriptor src,
-   typename graph_traits<Graph>::vertex_descriptor sink,
-   CapacityEdgeMap cap, 
-   ResidualCapacityEdgeMap res,
-   ReverseEdgeMap rev, 
-   VertexIndexMap indexMap) 
-{
-	return push_relabel_max_flow(g, src, sink, cap, res, rev, indexMap);
-}
-
+typedef enum { edmonds_karp, push_relabel } AlgoTag;
 
 template<typename Graph, typename PartitionMap, typename CapacityMap, typename Vertex>
 struct make_directed
@@ -88,13 +58,15 @@ struct make_directed
 	Graph g;
 };
 
-  //TODO: add MatchingEdgeMap
-  template <class Graph>
+  //Algorithm specified by user
+  template <class Graph, class MatchingEdgeMap>
   unsigned int
-  bipartite_matching_edmonds_karp
+  bipartite_matching
     (Graph& g,
+	MatchingEdgeMap& mat,
 	unsigned int n,
-	unsigned int m)
+	unsigned int m,
+	AlgoTag algo_tag)
   {
 
 	typedef typename property_map<Graph, vertex_index_t>::type IndexMap;
@@ -127,14 +99,14 @@ struct make_directed
 	IteratorPartitionMap iteratorPartitionMap((partitionMap)->begin(), index_map);
 
 	bool really = is_bipartite(g, index_map, iteratorPartitionMap);
-	std::cout << (really?"true":"false") << std::endl;
+	std::cout << "is_bipartite: " << (really?"true":"false") << std::endl;
 
 	vertex_iterator vertex_iter, vertex_end;
-	for(tie (vertex_iter, vertex_end) = vertices (g); vertex_iter != vertex_end; ++vertex_iter)
+	/*for(tie (vertex_iter, vertex_end) = vertices (g); vertex_iter != vertex_end; ++vertex_iter)
 	{   
 		std::cout << "Vertex " << *vertex_iter << " has color " << (get(iteratorPartitionMap, *vertex_iter) == 
 				color_traits<default_color_type>::white() ? "white" : "black") << std::endl;
-	}
+	}*/
 
 	// add fake source and target 
 	n += 2;
@@ -212,60 +184,94 @@ struct make_directed
 		}
 	}//for   
 
-  //create maps out of arrays
-  iterator_property_map
-    <unsigned int*, EdgeID_Map>
-	  capacity(pCapacity, edge_id_map);
+	//create maps out of arrays
+	iterator_property_map
+	  <unsigned int*, EdgeID_Map>
+	    capacity(pCapacity, edge_id_map);
 
-  iterator_property_map
-    <unsigned int*, EdgeID_Map>
-	  residual_capacity(pResidualCapacity, edge_id_map);
+	iterator_property_map
+	  <unsigned int*, EdgeID_Map>
+	    residual_capacity(pResidualCapacity, edge_id_map);
 
-  iterator_property_map
-    <edge_descriptor*, EdgeID_Map>
-	  rev(pReverse, edge_id_map);
+	iterator_property_map
+	  <edge_descriptor*, EdgeID_Map>
+	    rev(pReverse, edge_id_map);
 
-  typedef make_directed<Graph, IteratorPartitionMap, iterator_property_map<unsigned int*, EdgeID_Map>, vertex_descriptor> make_directed_t;
-    
-  make_directed_t md(g, iteratorPartitionMap, capacity, src, sink);
-  filtered_graph<Graph, make_directed_t> fg(g, md);
-  std::vector<default_color_type> color(num_vertices(g));
-  std::vector<edge_descriptor> pred(num_vertices(g));
+	typedef make_directed<Graph, IteratorPartitionMap, iterator_property_map<unsigned int*, EdgeID_Map>, vertex_descriptor> make_directed_t;
 
-#if 1
+	make_directed_t md(g, iteratorPartitionMap, capacity, src, sink);
+	filtered_graph<Graph, make_directed_t> fg(g, md);
+	std::vector<default_color_type> color(num_vertices(g));
+	std::vector<edge_descriptor> pred(num_vertices(g));
 
-  long flow = bipartite_matching_edmonds_karp
-  	(fg, src, sink, capacity, residual_capacity, rev, &color[0], &pred[0]);
 
-#else  
+	long flow = 0;
 
-  long flow = bipartite_matching_push_relabel
-  	(fg, src, sink, capacity, residual_capacity, rev, index_map);
+	if(algo_tag == edmonds_karp) {
 
-#endif 
+		std::vector<default_color_type> color(num_vertices(g));
+		std::vector<edge_descriptor> pred(num_vertices(g));
 
-  std::cout << "Matching Number:" << std::endl;
-  std::cout << flow << std::endl << std::endl;
-
-  std::cout << "Matching:" << std::endl;
-  vertex_iterator u_iter, u_end;
-  out_edge_iterator ei, e_end;
-  for (boost::tie(u_iter, u_end) = vertices(g); u_iter != u_end; ++u_iter)
-    for (boost::tie(ei, e_end) = out_edges(*u_iter, g); ei != e_end; ++ei) {
-      if ((capacity[*ei] - residual_capacity[*ei] == 1) && (*u_iter != src) && (target(*ei, g) != sink))
-        std::cout << *u_iter << " " << target(*ei, g) << std::endl;
+		flow = edmonds_karp_max_flow
+		  (fg, src, sink, capacity, residual_capacity, rev, &color[0], &pred[0]);
+	}
+	else if(algo_tag == push_relabel) {
+		flow = push_relabel_max_flow
+		  (fg, src, sink, capacity, residual_capacity, rev, index_map);
+	}
+	else {
+		std::cout << "Invalid algorithm tag specified... Exiting!!!" << std::endl;
+		return 0;
 	}
 
 
-  //now clean up
-  delete partitionMap;
-  delete[] pCapacity;
-  delete[] pResidualCapacity;
-  delete[] pReverse;
+	vertex_iterator u_iter, u_end;
+	out_edge_iterator ei, e_end;
 
-	  return 0;
+	for (boost::tie(u_iter, u_end) = vertices(g); u_iter != u_end; ++u_iter) {
+
+		if(get(iteratorPartitionMap, *u_iter) == color_traits<default_color_type>::white()) {
+
+			for (boost::tie(ei, e_end) = out_edges(*u_iter, g); ei != e_end; ++ei) {
+
+				if ((capacity[*ei] - residual_capacity[*ei] == 1) 
+				  && (*u_iter != src) && (*u_iter != sink) 
+				  && (target(*ei, g) != src) && (target(*ei, g) != sink))
+
+					put(mat, *ei, 1);
+			}
+		}
+	}
+
+	//now clean up
+	delete partitionMap;
+	delete[] pCapacity;
+	delete[] pResidualCapacity;
+	delete[] pReverse;
+
+	return flow;
   }
 
+  //Algorithm decided based on density
+  template <class Graph, class MatchingEdgeMap>
+  unsigned int
+  bipartite_matching
+    (Graph& g,
+	MatchingEdgeMap& mat,
+	unsigned int n,
+	unsigned int m)
+  {
+	  float density = 2.0 * m / (n*(n-1));  // 2E / V(V-1)
+
+	  AlgoTag algo_tag;
+	  if(density > DENSITY_THRESHOLD)
+		  algo_tag = push_relabel;
+	  else
+		  algo_tag = edmonds_karp;
+
+	  return bipartite_matching(g, mat, n, m, algo_tag);
+
+  }
 
 } //namespace boost
 

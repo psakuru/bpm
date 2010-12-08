@@ -7,6 +7,7 @@
 #include <boost/graph/bipartite.hpp>
 #include <vector>
 #include <cstdio>
+#include <cstdlib>
 
 #include <boost/graph/graph_traits.hpp>
 
@@ -28,8 +29,6 @@ int main()
   typedef graph_traits<Graph>::vertices_size_type vertices_size_type;
   typedef graph_traits<Graph>::vertex_descriptor vertex_descriptor;
   typedef graph_traits<Graph>::edge_descriptor edge_descriptor;
-
-  std::vector<vertex_descriptor> verts; //stores vertex descriptors for each added node
 
   //giving edge ids to real and fake edges and their reverses
   //all reverse edges get original_edge_id + 1
@@ -57,7 +56,7 @@ int main()
       std::sscanf ( in_line.c_str(), "%*c %3s %ld %ld", pr_type, &n, &m );
       {
         for (long vi = 0; vi < n; ++vi)
-          verts.push_back(add_vertex(g));
+		  add_vertex(g);
       }
 
 	  //now initialize the edge IDs
@@ -76,7 +75,7 @@ int main()
       {
         edge_descriptor e1, e2;
         bool in1, in2;
-        boost::tie(e1, in1) = add_edge(verts[tail], verts[head], realEdgeID++, g); 
+        boost::tie(e1, in1) = add_edge(tail, head, realEdgeID++, g);
         if (!in1) {
           std::cout << "unable to add edge (" << head << "," << tail << ")"
                     << std::endl;
@@ -88,7 +87,24 @@ int main()
     } /* end of switch */
   } /* end of input loop */
 
-	bipartite_matching_edmonds_karp(g, n, m);
+	
+  AlgoTag algo_tag = edmonds_karp;
+
+	unsigned int* pMatching = (unsigned int*)calloc(m, sizeof(unsigned int));
+	typedef property_map<Graph, edge_index_t>::type EdgeID_Map;
+	EdgeID_Map edge_id_map = get(edge_index, g);
+
+	iterator_property_map
+	  <unsigned int*, EdgeID_Map>
+	    mat(pMatching, edge_id_map);
+
+	unsigned int flow = bipartite_matching(g, mat, n, m, algo_tag);
+
+	std::cout << "Matching: " << flow << ": " << std::endl;
+	for(unsigned int i=0; i<m; ++i) {
+		std::cout << pMatching[i] << std::endl;
+	}
+	free(pMatching);
 
   return EXIT_SUCCESS;
 }
