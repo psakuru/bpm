@@ -3,6 +3,7 @@
 
 #include <boost/graph/edmonds_karp_max_flow.hpp>
 #include <boost/graph/push_relabel_max_flow.hpp>
+#include <assert.h>
 
 namespace boost {
 
@@ -21,11 +22,20 @@ struct make_directed
 	template<typename EdgeDescriptor>
 	bool operator()(const EdgeDescriptor& edge) const {
 
-		if(source(edge,g) == src && get(capacity_map, edge) == 1) //src
-			return true;
+		if(source(edge,g) == src) { //src
+			if(get(capacity_map, edge) == 1) 
+				return true;
+			else
+				return false;
 
-		if(source(edge,g) == sink && get(capacity_map, edge) == 0) //sink
-			return true;
+		}
+
+		if(source(edge,g) == sink) { //sink
+			if(get(capacity_map, edge) == 0) 
+				return true;
+			else
+				return false;
+		}
 
 		if(get(partition_map, source(edge, g)) == color_traits<default_color_type>::white()) { //white
 			if(target(edge,g) == src) {
@@ -33,11 +43,11 @@ struct make_directed
 					return true;
 			}
 			else {
-				if(get(capacity_map, edge)==1)
+				if(get(capacity_map, edge) == 1)
 					return true;
 			}
 		}
-		else { //black
+		else if(get(partition_map, source(edge, g)) == color_traits<default_color_type>::black()) { //black
 			if(target(edge,g) == sink) {
 				if(get(capacity_map, edge) == 1)
 					return true;
@@ -47,6 +57,8 @@ struct make_directed
 					return true;
 			}
 		}
+		else
+			std::cout << "I'm not src, not sink, not white, nor black... who am I!!!" << std::endl;
 
 		return false;
 	}
@@ -205,7 +217,7 @@ struct make_directed
 	std::vector<edge_descriptor> pred(num_vertices(g));
 
 
-	long flow = 0;
+	long flow = -1;
 
 	if(algo_tag == edmonds_karp) {
 
@@ -214,10 +226,14 @@ struct make_directed
 
 		flow = edmonds_karp_max_flow
 		  (fg, src, sink, capacity, residual_capacity, rev, &color[0], &pred[0]);
+
+		std::cout << "EK flow is: " << flow << std::endl;
 	}
 	else if(algo_tag == push_relabel) {
 		flow = push_relabel_max_flow
 		  (fg, src, sink, capacity, residual_capacity, rev, index_map);
+
+		std::cout << "PR flow is: " << flow << std::endl;
 	}
 	else {
 		std::cout << "Invalid algorithm tag specified... Exiting!!!" << std::endl;
@@ -227,7 +243,7 @@ struct make_directed
 
 	vertex_iterator u_iter, u_end;
 	out_edge_iterator ei, e_end;
-
+	unsigned int matched_edge_count = 0;
 	for (boost::tie(u_iter, u_end) = vertices(g); u_iter != u_end; ++u_iter) {
 
 		if(get(iteratorPartitionMap, *u_iter) == color_traits<default_color_type>::white()) {
@@ -236,12 +252,16 @@ struct make_directed
 
 				if ((capacity[*ei] - residual_capacity[*ei] == 1) 
 				  && (*u_iter != src) && (*u_iter != sink) 
-				  && (target(*ei, g) != src) && (target(*ei, g) != sink))
+				  && (target(*ei, g) != src) && (target(*ei, g) != sink)) {
 
 					put(mat, *ei, 1);
+					++matched_edge_count;
+				}
 			}
 		}
 	}
+
+	assert(flow == matched_edge_count);
 
 	//now clean up
 	delete partitionMap;
