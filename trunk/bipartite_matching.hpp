@@ -4,6 +4,7 @@
 #include <boost/graph/edmonds_karp_max_flow.hpp>
 #include <boost/graph/push_relabel_max_flow.hpp>
 #include <assert.h>
+#include <ctime>
 
 namespace boost {
 
@@ -224,14 +225,30 @@ struct make_directed
 		std::vector<default_color_type> color(num_vertices(g));
 		std::vector<edge_descriptor> pred(num_vertices(g));
 
+		time_t start, end;
+		time(&start);
+		for(int i=0; i < 1000; ++i)
 		flow = edmonds_karp_max_flow
 		  (fg, src, sink, capacity, residual_capacity, rev, &color[0], &pred[0]);
+
+		time(&end);
+		double diff = difftime(end, start);
+		std::cout << "Time taken = " << diff << std::endl;
 
 		std::cout << "EK flow is: " << flow << std::endl;
 	}
 	else if(algo_tag == push_relabel) {
+
+		time_t start, end;
+		time(&start);
+		for(int i=0; i < 1000; ++i)
 		flow = push_relabel_max_flow
 		  (fg, src, sink, capacity, residual_capacity, rev, index_map);
+
+		time(&end);
+		double diff = difftime(end, start);
+		std::cout << "Time taken = " << diff << std::endl;
+
 
 		std::cout << "PR flow is: " << flow << std::endl;
 	}
