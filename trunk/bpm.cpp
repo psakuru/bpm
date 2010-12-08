@@ -15,8 +15,12 @@
 using namespace boost;
 
 
-int main()
+int main(int argc, char** argv)
 {
+	if(argc != 2) {
+		std::cout << "Usage: bpm algoType <graphFile" << std::endl;
+		return -1;
+	}
 
   typedef adjacency_list_traits < vecS, vecS, undirectedS > Traits;
 
@@ -88,7 +92,7 @@ int main()
   } /* end of input loop */
 
 	
-  AlgoTag algo_tag = edmonds_karp;
+  AlgoTag algo_tag = (atoi(argv[1]) == 0)? edmonds_karp : push_relabel;//push_relabel;//edmonds_karp;
 
 	unsigned int* pMatching = (unsigned int*)calloc(m, sizeof(unsigned int));
 	typedef property_map<Graph, edge_index_t>::type EdgeID_Map;
