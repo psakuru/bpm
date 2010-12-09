@@ -227,7 +227,7 @@ struct make_directed
 
 		time_t start, end;
 		time(&start);
-		for(int i=0; i < 1000; ++i)
+		//for(int i=0; i < 1000; ++i)
 		flow = edmonds_karp_max_flow
 		  (fg, src, sink, capacity, residual_capacity, rev, &color[0], &pred[0]);
 
@@ -241,7 +241,7 @@ struct make_directed
 
 		time_t start, end;
 		time(&start);
-		for(int i=0; i < 1000; ++i)
+		//for(int i=0; i < 1000; ++i)
 		flow = push_relabel_max_flow
 		  (fg, src, sink, capacity, residual_capacity, rev, index_map);
 
