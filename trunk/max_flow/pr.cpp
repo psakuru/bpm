@@ -8,8 +8,16 @@
 #include <ctime>
 
 int
-main()
+main(int argc, char** argv)
 {
+	
+	if(argc != 2) {
+		std::cout << "Usage: ek numIterations" << std::endl;
+		return -1;
+	}
+
+	unsigned int numIterations = atoi(argv[1]);
+
 	using namespace boost;
 
 	typedef adjacency_list_traits<vecS, vecS, directedS> Traits;
@@ -37,12 +45,12 @@ main()
 	time_t start, end;
 	time(&start);
 
-	for(int i=0; i < 1000; ++i)
+	for(int i=0; i < numIterations; ++i)
 		flow = push_relabel_max_flow(g, s, t);
 	
 	time(&end);
 	double diff = difftime(end, start);
-	std::cout << "Time taken = " << diff << std::endl;
+	std::cout << "PR Time taken = " << diff << std::endl;
 
 	std::cout << "c  The total flow:" << std::endl;
 	std::cout << "s " << flow << std::endl << std::endl;
