@@ -50,7 +50,7 @@ main()
   std::cout << "c  The total flow:" << std::endl;
   std::cout << "s " << flow << std::endl << std::endl;
 
-  std::cout << "c flow values:" << std::endl;
+/*  std::cout << "c flow values:" << std::endl;
   graph_traits < Graph >::vertex_iterator u_iter, u_end;
   graph_traits < Graph >::out_edge_iterator ei, e_end;
   for (boost::tie(u_iter, u_end) = vertices(g); u_iter != u_end; ++u_iter)
@@ -58,6 +58,6 @@ main()
       if (capacity[*ei] > 0)
         std::cout << "f " << *u_iter << " " << target(*ei, g) << " "
           << (capacity[*ei] - residual_capacity[*ei]) << std::endl;
-
+*/
   return EXIT_SUCCESS;
 }
