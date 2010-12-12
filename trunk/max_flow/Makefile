@@ -17,4 +17,4 @@ randomplay: randomplay.cpp
 	g++ -g -I$(BOOST_INCLUDE) randomplay.cpp -o randomplay
 
 clean:
-	rm -f randomplay ek pr *.o
+	rm -f randomplay ek bk pr *.o
