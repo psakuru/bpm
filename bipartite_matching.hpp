@@ -74,11 +74,11 @@ struct make_directed
   //Algorithm specified by user
   template <class Graph, class MatchingEdgeMap>
   unsigned int
-  bipartite_matching
+  max_bipartite_matching
     (Graph& g,
 	MatchingEdgeMap& mat,
-	unsigned int n,
-	unsigned int m,
+	typename graph_traits<Graph>::vertices_size_type n,
+	typename graph_traits<Graph>::degree_size_type m,
 	AlgoTag algo_tag)
   {
 
@@ -292,11 +292,11 @@ struct make_directed
   //Algorithm decided based on density
   template <class Graph, class MatchingEdgeMap>
   unsigned int
-  bipartite_matching
+  max_bipartite_matching
     (Graph& g,
 	MatchingEdgeMap& mat,
-	unsigned int n,
-	unsigned int m)
+	typename graph_traits<Graph>::vertices_size_type n,
+	typename graph_traits<Graph>::degree_size_type m)
   {
 	  float density = 2.0 * m / (n*(n-1));  // 2E / V(V-1)
 

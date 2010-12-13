@@ -102,7 +102,7 @@ int main(int argc, char** argv)
 	  <unsigned int*, EdgeID_Map>
 	    mat(pMatching, edge_id_map);
 
-	unsigned int flow = bipartite_matching(g, mat, n, m, algo_tag);
+	unsigned int flow = max_bipartite_matching(g, mat, n, m, algo_tag);
 
 	std::cout << "Matching: " << flow << ": " << std::endl;
 	for(unsigned int i=0; i<m; ++i) {
