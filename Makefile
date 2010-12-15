@@ -1,6 +1,6 @@
 
-#BOOST_INCLUDE = /media/Work/Dump/boost_1_44_0/installed_libs/include
-BOOST_INCLUDE = /usr/local/include
+BOOST_INCLUDE = /media/Work/Dump/boost_1_44_0/installed_libs/include
+#BOOST_INCLUDE = /usr/local/include
 
 #BOOST_LIB = /media/Work/Dump/boost_1_44_0/installed_libs/lib/
 

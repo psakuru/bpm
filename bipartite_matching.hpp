@@ -81,18 +81,23 @@ struct make_directed
 	typename graph_traits<Graph>::degree_size_type m,
 	AlgoTag algo_tag)
   {
-
-	typedef typename property_map<Graph, vertex_index_t>::type IndexMap;
-	typedef typename property_map<Graph, edge_index_t>::type EdgeID_Map;
-	typedef std::vector<default_color_type> PartitionMap;
-	PartitionMap *partitionMap; 
-
 	typedef typename graph_traits<Graph>::vertices_size_type vertices_size_type;
 	typedef typename graph_traits<Graph>::vertex_descriptor vertex_descriptor;
 	typedef typename graph_traits<Graph>::edge_descriptor edge_descriptor;
 	typedef typename graph_traits<Graph>::vertex_iterator vertex_iterator;
 	typedef typename graph_traits<Graph>::out_edge_iterator out_edge_iterator;
 	typedef typename graph_traits<Graph>::degree_size_type degree_size_type;
+
+	function_requires<VertexListGraphConcept<Graph> >(); //to have vertices(), num_vertices(),
+	function_requires<IncidenceGraphConcept<Graph> >(); //to have source(), target() and out_edges()
+	function_requires<Mutable_LvaluePropertyMapConcept<MatchingEdgeMap, edge_descriptor> >(); //write flow-values to residuals
+	assert(num_vertices(g) >= 2);
+
+	typedef typename property_map<Graph, vertex_index_t>::type IndexMap;
+	typedef typename property_map<Graph, edge_index_t>::type EdgeID_Map;
+	typedef std::vector<default_color_type> PartitionMap;
+	PartitionMap *partitionMap; 
+
 
 	vertex_descriptor src, sink;
 
