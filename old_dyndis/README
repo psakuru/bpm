@@ -1,1 +1,0 @@
-attempted to write new decoupled interface for dynamic dispatch for max_flow such that user doesn't have to add reverse edges... capacities are provided by user anyway, so decoupling doesn't help so much... anyway, lots of compile errors and lazy programmers
